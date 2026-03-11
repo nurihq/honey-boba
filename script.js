@@ -91,7 +91,7 @@ class Boba {
         this.size = Math.random() * 8 + 6;
         this.x = Math.random() * (width - 40) + 20;
         this.y = -50;
-        this.vy = Math.random() * 1.5 + 1;
+        this.vy = (Math.random() * 1.5 + 1) * 0.7; // Reduced by 30%
         this.vx = (Math.random() - 0.5) * 0.5;
         this.rotation = Math.random() * Math.PI * 2;
         this.rotationSpeed = (Math.random() - 0.5) * 0.02;
