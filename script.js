@@ -15,7 +15,8 @@ const translations = {
         "t-order-wolt-3": "Order on Wolt",
         "t-links-title": "Find Us Here",
         "t-map-title": "Visit Us",
-        "t-built-by": "Built with"
+        "t-footer-prefix": "Built with",
+        "t-footer-suffix": "by"
     },
     ge: {
         "t-hero-title": "დააგემოვნე სიტკბო",
@@ -33,7 +34,8 @@ const translations = {
         "t-order-wolt-3": "შეუკვეთეთ Wolt-ზე",
         "t-links-title": "გვიპოვეთ აქ",
         "t-map-title": "გვესტუმრეთ",
-        "t-built-by": "შექმნილია"
+        "t-footer-prefix": "შექმნილია",
+        "t-footer-suffix": "-ით"
     }
 };
 
