@@ -37,28 +37,14 @@ const translations = {
     }
 };
 
-const langToggle = document.getElementById('langToggle');
-const langEn = document.getElementById('lang-en');
-const langGe = document.getElementById('lang-ge');
+const langBtn = document.getElementById('langToggle');
+let currentLang = 'ge'; // Default to Georgian
 
-// Default is Georgian as per instructions: "App should be in georgian by default"
-let currentLang = 'ge';
-
-function setLanguage(lang) {
+function updateLanguage(lang) {
     currentLang = lang;
 
-    // Update labels
-    if (lang === 'en') {
-        langEn.classList.add('active');
-        langGe.classList.remove('active');
-        langToggle.checked = false;
-        document.querySelector('.hero-title').removeAttribute('lang');
-    } else {
-        langGe.classList.add('active');
-        langEn.classList.remove('active');
-        langToggle.checked = true;
-        document.querySelector('.hero-title').setAttribute('lang', 'ge');
-    }
+    // Update button flag to showing the *next* language
+    langBtn.textContent = lang === 'en' ? '🇬🇪' : '🇺🇸';
 
     // Update texts
     for (const key in translations[lang]) {
@@ -67,20 +53,20 @@ function setLanguage(lang) {
             element.textContent = translations[lang][key];
         }
     }
+
+    // Update document lang for potential CSS targeting
+    document.documentElement.lang = lang;
 }
 
-// Initialize with Georgian
-setLanguage('ge');
-
-langToggle.addEventListener('change', (e) => {
-    if (e.target.checked) {
-        setLanguage('ge');
-    } else {
-        setLanguage('en');
-    }
+langBtn.addEventListener('click', () => {
+    const nextLang = currentLang === 'en' ? 'ge' : 'en';
+    updateLanguage(nextLang);
 });
 
-// Interactive Boba Particles
+// Initialize with Georgian
+updateLanguage('ge');
+
+// Boba Particle Animation
 const container = document.getElementById('boba-particles');
 
 function createBoba() {
@@ -88,9 +74,9 @@ function createBoba() {
     boba.classList.add('boba');
 
     // Randomize properties
-    const size = Math.random() * 15 + 10; // 10px to 25px
+    const size = Math.random() * 20 + 10; // 10px to 30px
     const left = Math.random() * 100; // 0% to 100%
-    const duration = Math.random() * 10 + 5; // 5s to 15s
+    const duration = Math.random() * 6 + 6; // 6s to 12s
 
     boba.style.width = `${size}px`;
     boba.style.height = `${size}px`;
@@ -106,14 +92,17 @@ function createBoba() {
 }
 
 // Create new boba particles periodically
-setInterval(createBoba, 300);
+setInterval(createBoba, 500);
 
 // Smooth scrolling
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
     anchor.addEventListener('click', function (e) {
         e.preventDefault();
-        document.querySelector(this.getAttribute('href')).scrollIntoView({
-            behavior: 'smooth'
-        });
+        const target = document.querySelector(this.getAttribute('href'));
+        if (target) {
+            target.scrollIntoView({
+                behavior: 'smooth'
+            });
+        }
     });
 });
