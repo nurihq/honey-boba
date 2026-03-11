@@ -33,7 +33,7 @@ const translations = {
         "t-order-wolt-3": "შეუკვეთეთ Wolt-ზე",
         "t-links-title": "გვიპოვეთ აქ",
         "t-map-title": "გვესტუმრეთ",
-        "t-built-by": "შექმნილია 🧋-ით"
+        "t-built-by": "შექმნილია"
     }
 };
 
