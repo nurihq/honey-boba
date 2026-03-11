@@ -72,15 +72,13 @@ const accumulationMap = [];
 
 // Wave States
 const STATES = {
-    WAVE1: 'WAVE1', // Dense initial drop sitting at top
+    WAVE1: 'WAVE1', // Initial drop
     WAVE2: 'WAVE2', // Slow filling over 1 minute
     DONE: 'DONE'    // 25% full
 };
 let currentState = STATES.WAVE1;
 
 let wave1Count = 0;
-let wave1Settled = 0;
-
 let wave2Count = 0;
 let wave2Spawned = 0;
 let wave2StartTime = 0;
@@ -94,13 +92,14 @@ function resize() {
         accumulationMap[i] = height;
     }
 
-    // Estimate counts based on screen area to hit 15% and 10%
-    const bobaArea = 300; // rough area taken by one boba in the pile including gaps
-    wave1Count = Math.floor((width * height * 0.15) / bobaArea);
-    wave1Count = Math.min(600, wave1Count); // Cap it to ensure performance
+    // Calculate total capacity for ~25% filled area
+    const bobaArea = 300;
+    let totalCapacity = Math.floor((width * height * 0.25) / bobaArea);
+    totalCapacity = Math.min(800, totalCapacity); // Performance cap
 
-    wave2Count = Math.floor((width * height * 0.10) / bobaArea);
-    wave2Count = Math.min(400, wave2Count);
+    // Wave 1 is exactly 50%
+    wave1Count = Math.floor(totalCapacity / 2);
+    wave2Count = totalCapacity - wave1Count;
 }
 
 class Boba {
@@ -109,26 +108,29 @@ class Boba {
         this.isWave1 = isWave1;
 
         if (this.isWave1) {
-            // Sitting together at the top, drop together
             this.x = Math.random() * (width - 40) + 20;
-            // Clumped vertically right above the screen bounds
-            this.y = -50 - Math.random() * 150;
-            this.vy = Math.random() * 2 + 5; // Fall fast together
-            this.vx = (Math.random() - 0.5) * 0.5;
+            // Sitting roughly at the same height at the top
+            this.y = -50 - Math.random() * 40;
+            // Fall slower initially, disperse horizontally
+            this.vy = Math.random() * 1.5 + 2;
+            this.vx = (Math.random() - 0.5) * 5;
+            this.gravity = 0.15;
         } else {
-            // Wave 2: spawn at top, fall slowly
+            // Wave 2: slower overall drift
             this.x = Math.random() * (width - 40) + 20;
-            this.y = -50;
-            this.vy = Math.random() * 1.5 + 1.5; // Slower fall
+            this.y = -30;
+            // 50% of the speed of Wave 1
+            this.vy = Math.random() * 0.75 + 1;
             this.vx = (Math.random() - 0.5) * 1.5;
+            this.gravity = 0.05; // Lower gravity for a drifty feel
         }
 
         this.rotation = Math.random() * Math.PI * 2;
         this.rotationSpeed = (Math.random() - 0.5) * 0.02;
 
         this.bounceCount = 0;
-        this.maxBounces = 2; // Allow small bounces
-        this.isSettling = false; // Transition state
+        this.maxBounces = 2;
+        this.isSettling = false;
 
         const rand = Math.random();
         if (rand < 0.05) {
@@ -143,19 +145,13 @@ class Boba {
         }
     }
 
-    update() {
-        if (this.isSettling) {
-            // Apply friction and slight sliding while settling
-            this.x += this.vx;
-            this.vx *= 0.8;
-
-            // Re-check surface height in case it slid to a lower spot
-            const radius = Math.floor(this.size * 0.8);
-            const ix = Math.floor(this.x);
-            let maxSurfaceY = height;
-            if (ix >= radius && ix < width - radius) {
-                for (let i = -radius; i <= radius; i++) {
-                    const checkX = ix + i;
+    getSurfaceY(xPos) {
+        const radius = Math.floor(this.size * 0.8);
+        let maxSurfaceY = height;
+        if (xPos >= radius && xPos < width - radius) {
+            for (let i = -radius; i <= radius; i++) {
+                const checkX = Math.floor(xPos) + i;
+                if (checkX >= 0 && checkX < width) {
                     const h = Math.sqrt(radius * radius - i * i);
                     const surfaceY = accumulationMap[checkX] - h;
                     if (surfaceY < maxSurfaceY) {
@@ -163,62 +159,84 @@ class Boba {
                     }
                 }
             }
+        }
+        return maxSurfaceY;
+    }
 
-            // If it found a new drop off, resume falling
-            if (this.y < maxSurfaceY - 2) {
-                this.isSettling = false;
+    update() {
+        if (this.isSettling) {
+            // "Liquid" flow: evaluate surface slope by checking left and right envelope
+            const yLeft = this.getSurfaceY(this.x - 3);
+            const yRight = this.getSurfaceY(this.x + 3);
+            const yCenter = this.getSurfaceY(this.x);
+
+            // Note: Canvas Y goes down. So a larger Y means it's lower/deeper.
+            if (yLeft > yCenter + 0.5) {
+                this.vx -= 0.6; // Accelerate left towards lower gap
+            } else if (yRight > yCenter + 0.5) {
+                this.vx += 0.6; // Accelerate right towards lower gap
             } else {
-                this.y = maxSurfaceY;
+                this.vx *= 0.6; // Apply friction at local minimum
             }
 
-            // Check if settled enough horizontally
-            if (Math.abs(this.vx) < 0.1 || !this.isSettling) {
-                if (this.isSettling) this.finalizeSettle();
-                return this.isSettling ? false : true;
+            // Cap the rolling speed
+            if (this.vx > 3) this.vx = 3;
+            if (this.vx < -3) this.vx = -3;
+
+            this.x += this.vx;
+
+            // Follow the contour of the gathered bobas
+            const newSurfaceY = this.getSurfaceY(this.x);
+
+            // If the drop is huge, it fell off a cliff, transition back to falling
+            if (this.y < newSurfaceY - 4) {
+                this.isSettling = false;
+            } else {
+                this.y = newSurfaceY;
+            }
+
+            // If we are settled horizontally, we can finalize to map
+            if (Math.abs(this.vx) < 0.1 && this.isSettling) {
+                this.finalizeSettle();
+                return false;
             }
             return true;
         }
 
+        // Falling physics
         this.y += this.vy;
         this.x += this.vx;
-        this.vy += 0.2; // Add gravity
+        this.vy += this.gravity;
         this.rotation += this.rotationSpeed;
 
-        const radius = Math.floor(this.size * 0.8);
-        const ix = Math.floor(this.x);
+        // Bounce off walls
+        if (this.x < this.size || this.x > width - this.size) {
+            this.vx = -this.vx * 0.8;
+            this.x = Math.max(this.size, Math.min(width - this.size, this.x));
+        }
 
-        if (ix >= radius && ix < width - radius) {
-            let maxSurfaceY = height;
-            for (let i = -radius; i <= radius; i++) {
-                const checkX = ix + i;
-                const h = Math.sqrt(radius * radius - i * i);
-                const surfaceY = accumulationMap[checkX] - h;
-                if (surfaceY < maxSurfaceY) {
-                    maxSurfaceY = surfaceY;
-                }
-            }
+        const maxSurfaceY = this.getSurfaceY(this.x);
 
-            if (this.y >= maxSurfaceY) {
-                this.y = maxSurfaceY;
+        // Collision with floor or other boba
+        if (this.y >= maxSurfaceY) {
+            this.y = maxSurfaceY;
 
-                if (this.bounceCount < this.maxBounces && this.vy > 2) {
-                    // Bounce
-                    this.vy = -this.vy * 0.4;
-                    // Spread outward a bit on impact
-                    this.vx = (Math.random() - 0.5) * 4;
-                    this.bounceCount++;
-                } else {
-                    // Start sliding/settling
-                    this.isSettling = true;
-                    this.vy = 0;
-                    this.vx = (Math.random() - 0.5) * 2; // Final small slide
-                }
+            if (this.bounceCount < this.maxBounces && this.vy > 1.5) {
+                // Bounce
+                this.vy = -this.vy * 0.4;
+                // Scatter outward horizontally
+                this.vx += (Math.random() - 0.5) * 4;
+                this.bounceCount++;
+            } else {
+                // Enter liquid rolling state
+                this.isSettling = true;
+                this.vy = 0;
             }
         }
 
         if (this.y > height + 20) {
             this.finalizeSettle();
-            return false; // Done
+            return false; // Escaped screen, remove
         }
         return true;
     }
@@ -227,7 +245,6 @@ class Boba {
         const radius = Math.floor(this.size * 0.8);
         const ix = Math.floor(this.x);
 
-        // Only add to map if it's within bounds
         if (this.y <= height) {
             for (let i = -radius; i <= radius; i++) {
                 const checkX = ix + i;
@@ -249,15 +266,7 @@ class Boba {
             });
         }
 
-        if (this.isWave1) {
-            wave1Settled++;
-            if (wave1Settled >= wave1Count && currentState === STATES.WAVE1) {
-                currentState = STATES.WAVE2;
-                wave2StartTime = performance.now();
-            }
-        }
-
-        if (settledParticles.length > 3000) { // Safety cap
+        if (settledParticles.length > 3000) {
             settledParticles.shift();
         }
     }
@@ -284,7 +293,7 @@ class Boba {
 window.addEventListener('resize', resize);
 resize();
 
-// Start Wave 1 (All at once)
+// Start Wave 1 (50% all at once)
 for (let i = 0; i < wave1Count; i++) {
     particles.push(new Boba(true));
 }
@@ -292,7 +301,6 @@ for (let i = 0; i < wave1Count; i++) {
 function animate(timestamp) {
     ctx.clearRect(0, 0, width, height);
 
-    // Draw all settled boba
     settledParticles.forEach(p => {
         ctx.save();
         ctx.translate(p.x, p.y);
@@ -308,7 +316,14 @@ function animate(timestamp) {
         ctx.restore();
     });
 
-    // Wave 2 Spawning Logic
+    // Clean trigger for Phase 2:
+    // Once Phase 1 falls and every local minimum is settled
+    if (currentState === STATES.WAVE1 && particles.length === 0) {
+        currentState = STATES.WAVE2;
+        wave2StartTime = timestamp;
+    }
+
+    // Wave 2 Spawning Logic (50% drifting over 1 minute)
     if (currentState === STATES.WAVE2) {
         const elapsed = timestamp - wave2StartTime;
         if (elapsed < wave2Duration) {
@@ -320,15 +335,9 @@ function animate(timestamp) {
                 wave2Spawned++;
             }
         } else {
-            currentState = STATES.DONE;
-        }
-    }
-
-    // Check strict 25% height limit globally just in case
-    if (currentState !== STATES.DONE) {
-        const minHeight = Math.min(...accumulationMap);
-        if (height - minHeight > height * 0.25) {
-            currentState = STATES.DONE;
+            if (particles.length === 0) {
+                currentState = STATES.DONE;
+            }
         }
     }
 
