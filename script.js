@@ -74,9 +74,9 @@ function createBoba() {
     boba.classList.add('boba');
 
     // Randomize properties
-    const size = Math.random() * 20 + 10; // 10px to 30px
+    const size = Math.random() * 15 + 10; // 10px to 25px
     const left = Math.random() * 100; // 0% to 100%
-    const duration = Math.random() * 6 + 6; // 6s to 12s
+    const duration = Math.random() * 15 + 15; // 15s to 30s (Slower)
 
     boba.style.width = `${size}px`;
     boba.style.height = `${size}px`;
