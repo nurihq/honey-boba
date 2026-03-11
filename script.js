@@ -90,7 +90,8 @@ function resize() {
 
     // Wave 1 is exactly 50%
     wave1Count = Math.floor(totalCapacity / 2);
-    wave2Count = totalCapacity - wave1Count;
+    // User requested halving Phase 2 amount
+    wave2Count = Math.floor((totalCapacity - wave1Count) / 2);
 }
 
 class Boba {
@@ -100,10 +101,10 @@ class Boba {
 
         if (this.isWave1) {
             this.x = Math.random() * (width - 40) + 20;
-            // Spawn way off screen so they fall like a uniform wave
-            this.y = -Math.random() * height * 0.8 - 50;
-            // Slower, dispersed fall
-            this.vy = Math.random() * 1.5 + 1;
+            // Spawn just off screen so they drop as a single liquid wave
+            this.y = -Math.random() * height * 0.2 - 50;
+            // Fast fall!
+            this.vy = Math.random() * 4 + 6;
             this.vx = (Math.random() - 0.5) * 4;
         } else {
             // Wave 2: slower overall drift
@@ -214,9 +215,9 @@ function updatePhysics() {
                     let nx = dx / dist;
                     let ny = dy / dist;
 
-                    // Push apart evenly
-                    let pushX = nx * overlap * 0.5;
-                    let pushY = ny * overlap * 0.5;
+                    // Push apart gently to prevent explosive pushing that causes towers
+                    let pushX = nx * overlap * 0.3;
+                    let pushY = ny * overlap * 0.3;
 
                     p1.x -= pushX;
                     p1.y -= pushY;
@@ -240,19 +241,21 @@ function updatePhysics() {
 function animate(timestamp) {
     ctx.clearRect(0, 0, width, height);
 
-    // Wave 2 Spawning Logic (Immediate parallel start, 50% drifting over 1 minute)
+    // Wave 2 Spawning Logic (3 second delay, 50% drifting over 1 minute)
     if (wave2StartTime === 0) {
-        wave2StartTime = timestamp;
+        wave2StartTime = timestamp + 3000; // Trigger spawn at 3 seconds
     }
 
-    const elapsed = timestamp - wave2StartTime;
-    if (elapsed < wave2Duration) {
-        const expectedSpawn = Math.floor((elapsed / wave2Duration) * wave2Count);
-        const toSpawn = expectedSpawn - wave2Spawned;
+    if (timestamp >= wave2StartTime) {
+        const elapsed = timestamp - wave2StartTime;
+        if (elapsed < wave2Duration) {
+            const expectedSpawn = Math.floor((elapsed / wave2Duration) * wave2Count);
+            const toSpawn = expectedSpawn - wave2Spawned;
 
-        for (let i = 0; i < toSpawn; i++) {
-            particles.push(new Boba(false));
-            wave2Spawned++;
+            for (let i = 0; i < toSpawn; i++) {
+                particles.push(new Boba(false));
+                wave2Spawned++;
+            }
         }
     }
 
