@@ -101,18 +101,17 @@ class Boba {
 
         if (this.isWave1) {
             this.x = Math.random() * (width - 40) + 20;
-            // Spawn just off screen so they drop as a single liquid wave
-            this.y = -Math.random() * height * 0.2 - 50;
-            // Fast fall!
-            this.vy = Math.random() * 4 + 6;
-            this.vx = (Math.random() - 0.5) * 4;
+            // Spawn tightly together as a single wave right above the screen
+            this.y = -50 - Math.random() * 80;
+            // Start with slight downward velocity, let gravity do the main work
+            this.vy = Math.random() * 2;
+            this.vx = (Math.random() - 0.5) * 5;
         } else {
-            // Wave 2: slower overall drift
+            // Wave 2: extremely slow drift
             this.x = Math.random() * (width - 40) + 20;
             this.y = -50;
-            // 50% of the speed of Wave 1
-            this.vy = Math.random() * 0.5 + 0.5;
-            this.vx = (Math.random() - 0.5) * 1;
+            this.vy = 0;
+            this.vx = (Math.random() - 0.5) * 0.5;
         }
 
         this.rotation = Math.random() * Math.PI * 2;
@@ -161,16 +160,18 @@ for (let i = 0; i < wave1Count; i++) {
 }
 
 function updatePhysics() {
-    const gravity = 0.15;
+    const gravity = 0.2; // Slightly stronger gravity for realistic drop speed
     const bounceFriction = 0.3; // retain 30% speed on bounce
-    const floorFriction = 0.8; // horizontal slowdown on floor
+    const floorFriction = 0.7; // higher horizontal slowdown on floor
 
     // 1. Apply gravity, velocity, and boundary constraints
     for (let p of particles) {
-        p.vy += gravity;
+        // Full gravity for Phase 1, extremely light gravity for Phase 2 drift
+        p.vy += gravity * (p.isWave1 ? 1 : 0.05);
 
-        // Terminal velocity
-        if (p.vy > 12) p.vy = 12;
+        // Terminal velocity (Phase 1 fast, Phase 2 very slow)
+        let maxV = p.isWave1 ? 15 : 1.5;
+        if (p.vy > maxV) p.vy = maxV;
 
         p.x += p.vx;
         p.y += p.vy;
@@ -183,6 +184,10 @@ function updatePhysics() {
             p.vx *= floorFriction;
             p.rotationSpeed *= 0.8;
         }
+
+        // Put completely to sleep if barely moving at the bottom to stop jitter
+        if (Math.abs(p.vx) < 0.05) p.vx = 0;
+        if (p.y + p.size > height - 2 && Math.abs(p.vy) < 0.05) p.vy = 0;
 
         // Wall constraints
         if (p.x - p.size < 0) {
@@ -225,13 +230,19 @@ function updatePhysics() {
                     p2.y += pushY;
 
                     // Transfer momentum slightly / Dampen to simulate viscosity
-                    p1.vx *= 0.9;
-                    p1.vy *= 0.9;
-                    p2.vx *= 0.9;
-                    p2.vy *= 0.9;
-
-                    p1.rotationSpeed *= 0.9;
-                    p2.rotationSpeed *= 0.9;
+                    // Only apply heavy viscosity near the bottom to let them fall naturally mid-air
+                    if (p1.y > height * 0.4 || p2.y > height * 0.4) {
+                        p1.vx *= 0.85;
+                        p1.vy *= 0.85;
+                        p2.vx *= 0.85;
+                        p2.vy *= 0.85;
+                        p1.rotationSpeed *= 0.9;
+                        p2.rotationSpeed *= 0.9;
+                    } else {
+                        // Light horizontal friction mid-air, no vertical slowing so they don't parachute
+                        p1.vx *= 0.95;
+                        p2.vx *= 0.95;
+                    }
                 }
             }
         }
@@ -241,9 +252,9 @@ function updatePhysics() {
 function animate(timestamp) {
     ctx.clearRect(0, 0, width, height);
 
-    // Wave 2 Spawning Logic (3 second delay, 50% drifting over 1 minute)
+    // Wave 2 Spawning Logic (4 second delay, 50% drifting over 1 minute)
     if (wave2StartTime === 0) {
-        wave2StartTime = timestamp + 3000; // Trigger spawn at 3 seconds
+        wave2StartTime = timestamp + 4000; // Trigger spawn exactly at 4 seconds
     }
 
     if (timestamp >= wave2StartTime) {
