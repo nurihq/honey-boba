@@ -15,7 +15,7 @@ const translations = {
         "t-order-wolt-3": "Order on Wolt",
         "t-links-title": "Find Us Here",
         "t-map-title": "Visit Us",
-        "t-built-by": "Built with 🧋 by"
+        "t-built-by": "Built with"
     },
     ge: {
         "t-hero-title": "დააგემოვნე სიტკბო",
@@ -42,19 +42,13 @@ let currentLang = 'ge'; // Default to Georgian
 
 function updateLanguage(lang) {
     currentLang = lang;
-
-    // Update button flag to showing the *next* language
     langBtn.textContent = lang === 'en' ? '🇬🇪' : '🇺🇸';
-
-    // Update texts
     for (const key in translations[lang]) {
         const element = document.getElementById(key);
         if (element) {
             element.textContent = translations[lang][key];
         }
     }
-
-    // Update document lang for potential CSS targeting
     document.documentElement.lang = lang;
 }
 
@@ -63,44 +57,151 @@ langBtn.addEventListener('click', () => {
     updateLanguage(nextLang);
 });
 
-// Initialize with Georgian
 updateLanguage('ge');
 
-// Boba Particle Animation
-const container = document.getElementById('boba-particles');
+// Boba Particle Accumulation Animation (Canvas)
+const canvas = document.getElementById('boba-canvas');
+const ctx = canvas.getContext('2d');
 
-function createBoba() {
-    const boba = document.createElement('div');
-    boba.classList.add('boba');
+let width, height;
+let particles = [];
+let settledParticles = [];
+const accumulationMap = [];
 
-    // 10% chance to be a coloured boba
-    const rand = Math.random();
-    if (rand < 0.05) {
-        boba.classList.add('boba-pink');
-    } else if (rand < 0.10) {
-        boba.classList.add('boba-blue');
+function resize() {
+    width = canvas.width = window.innerWidth;
+    height = canvas.height = window.innerHeight;
+    accumulationMap.length = 0;
+    for (let i = 0; i < width; i++) {
+        accumulationMap[i] = height;
     }
-
-    // Randomize properties
-    const size = Math.random() * 15 + 10; // 10px to 25px
-    const left = Math.random() * 100; // 0% to 100%
-    const duration = Math.random() * 15 + 15; // 15s to 30s (Slower)
-
-    boba.style.width = `${size}px`;
-    boba.style.height = `${size}px`;
-    boba.style.left = `${left}vw`;
-    boba.style.animationDuration = `${duration}s`;
-
-    container.appendChild(boba);
-
-    // Remove after animation completes
-    setTimeout(() => {
-        boba.remove();
-    }, duration * 1000);
 }
 
-// Create new boba particles periodically
-setInterval(createBoba, 500);
+window.addEventListener('resize', resize);
+resize();
+
+class Boba {
+    constructor() {
+        this.reset();
+    }
+
+    reset() {
+        this.size = Math.random() * 8 + 6;
+        this.x = Math.random() * width;
+        this.y = -50;
+        this.vy = Math.random() * 1.5 + 1;
+        this.vx = (Math.random() - 0.5) * 0.5;
+        this.rotation = Math.random() * Math.PI * 2;
+        this.rotationSpeed = (Math.random() - 0.5) * 0.02;
+
+        const rand = Math.random();
+        if (rand < 0.05) {
+            this.color1 = '#ffc0cb';
+            this.color2 = '#ff758f';
+        } else if (rand < 0.10) {
+            this.color1 = '#add8e6';
+            this.color2 = '#00c2e8';
+        } else {
+            this.color1 = '#4a2e1b';
+            this.color2 = '#21130b';
+        }
+    }
+
+    update() {
+        this.y += this.vy;
+        this.x += this.vx;
+        this.rotation += this.rotationSpeed;
+
+        const ix = Math.floor(this.x);
+        if (ix >= 0 && ix < width) {
+            const targetY = accumulationMap[ix] - this.size;
+            if (this.y >= targetY) {
+                this.y = targetY;
+                this.settle();
+                return false;
+            }
+        }
+
+        if (this.y > height + 20) {
+            this.reset();
+        }
+        return true;
+    }
+
+    settle() {
+        const radius = Math.floor(this.size * 0.8);
+        for (let i = -radius; i <= radius; i++) {
+            const ix = Math.floor(this.x + i);
+            if (ix >= 0 && ix < width) {
+                const h = Math.sqrt(radius * radius - i * i);
+                accumulationMap[ix] = Math.min(accumulationMap[ix], this.y - h + this.size);
+            }
+        }
+        settledParticles.push({
+            x: this.x,
+            y: this.y,
+            size: this.size,
+            color1: this.color1,
+            color2: this.color2,
+            rotation: this.rotation
+        });
+
+        if (settledParticles.length > 800) {
+            settledParticles.shift();
+        }
+
+        this.reset();
+    }
+
+    draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+        ctx.rotate(this.rotation);
+
+        const grad = ctx.createRadialGradient(-this.size / 3, -this.size / 3, this.size / 10, 0, 0, this.size);
+        grad.addColorStop(0, this.color1);
+        grad.addColorStop(1, this.color2);
+
+        ctx.fillStyle = grad;
+        ctx.globalAlpha = 0.6;
+        ctx.beginPath();
+        ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+}
+
+for (let i = 0; i < 30; i++) {
+    particles.push(new Boba());
+}
+
+function animate() {
+    ctx.clearRect(0, 0, width, height);
+
+    settledParticles.forEach(p => {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(p.rotation);
+        const grad = ctx.createRadialGradient(-p.size / 3, -p.size / 3, p.size / 10, 0, 0, p.size);
+        grad.addColorStop(0, p.color1);
+        grad.addColorStop(1, p.color2);
+        ctx.fillStyle = grad;
+        ctx.globalAlpha = 0.7;
+        ctx.beginPath();
+        ctx.arc(0, 0, p.size, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    });
+
+    particles.forEach(p => {
+        p.update();
+        p.draw();
+    });
+
+    requestAnimationFrame(animate);
+}
+
+animate();
 
 // Smooth scrolling
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
