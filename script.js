@@ -62,21 +62,12 @@ langBtn.addEventListener('click', () => {
 updateLanguage('ge');
 
 // Boba Particle Accumulation Animation (Canvas)
+// Real 2D Physics for liquid leveling
 const canvas = document.getElementById('boba-canvas');
 const ctx = canvas.getContext('2d');
 
 let width, height;
 let particles = [];
-let settledParticles = [];
-const accumulationMap = [];
-
-// Wave States
-const STATES = {
-    WAVE1: 'WAVE1', // Initial drop
-    WAVE2: 'WAVE2', // Slow filling over 1 minute
-    DONE: 'DONE'    // 25% full
-};
-let currentState = STATES.WAVE1;
 
 let wave1Count = 0;
 let wave2Count = 0;
@@ -87,15 +78,15 @@ let wave2Duration = 60000; // 1 minute in ms
 function resize() {
     width = canvas.width = window.innerWidth;
     height = canvas.height = window.innerHeight;
-    accumulationMap.length = 0;
-    for (let i = 0; i < width; i++) {
-        accumulationMap[i] = height;
-    }
 
     // Calculate total capacity for ~25% filled area
-    const bobaArea = 300;
-    let totalCapacity = Math.floor((width * height * 0.25) / bobaArea);
-    totalCapacity = Math.min(800, totalCapacity); // Performance cap
+    // A circle packs efficiently at roughly ~90% density in 2D
+    const avgRadius = 8;
+    const bobaArea = Math.PI * avgRadius * avgRadius;
+    let totalCapacity = Math.floor((width * height * 0.25 * 0.9) / bobaArea);
+
+    // Strict cap for performance (600 particles is very smooth for O(N^2) in JS)
+    totalCapacity = Math.min(600, totalCapacity);
 
     // Wave 1 is exactly 50%
     wave1Count = Math.floor(totalCapacity / 2);
@@ -104,34 +95,29 @@ function resize() {
 
 class Boba {
     constructor(isWave1 = false) {
-        this.size = Math.random() * 8 + 6;
+        this.size = Math.random() * 4 + 6; // Radius
         this.isWave1 = isWave1;
 
         if (this.isWave1) {
             this.x = Math.random() * (width - 40) + 20;
-            // Sitting roughly at the same height at the top
-            this.y = -50 - Math.random() * 40;
-            // Fall slower initially, disperse horizontally
-            this.vy = Math.random() * 1.5 + 2;
-            this.vx = (Math.random() - 0.5) * 5;
-            this.gravity = 0.15;
+            // Spawn way off screen so they fall like a uniform wave
+            this.y = -Math.random() * height * 0.8 - 50;
+            // Slower, dispersed fall
+            this.vy = Math.random() * 1.5 + 1;
+            this.vx = (Math.random() - 0.5) * 4;
         } else {
             // Wave 2: slower overall drift
             this.x = Math.random() * (width - 40) + 20;
-            this.y = -30;
+            this.y = -50;
             // 50% of the speed of Wave 1
-            this.vy = Math.random() * 0.75 + 1;
-            this.vx = (Math.random() - 0.5) * 1.5;
-            this.gravity = 0.05; // Lower gravity for a drifty feel
+            this.vy = Math.random() * 0.5 + 0.5;
+            this.vx = (Math.random() - 0.5) * 1;
         }
 
         this.rotation = Math.random() * Math.PI * 2;
-        this.rotationSpeed = (Math.random() - 0.5) * 0.02;
+        this.rotationSpeed = (Math.random() - 0.5) * 0.05;
 
-        this.bounceCount = 0;
-        this.maxBounces = 2;
-        this.isSettling = false;
-
+        // Visuals
         const rand = Math.random();
         if (rand < 0.05) {
             this.color1 = '#ffc0cb';
@@ -145,132 +131,6 @@ class Boba {
         }
     }
 
-    getSurfaceY(xPos) {
-        const radius = Math.floor(this.size * 0.8);
-        let maxSurfaceY = height;
-        if (xPos >= radius && xPos < width - radius) {
-            for (let i = -radius; i <= radius; i++) {
-                const checkX = Math.floor(xPos) + i;
-                if (checkX >= 0 && checkX < width) {
-                    const h = Math.sqrt(radius * radius - i * i);
-                    const surfaceY = accumulationMap[checkX] - h;
-                    if (surfaceY < maxSurfaceY) {
-                        maxSurfaceY = surfaceY;
-                    }
-                }
-            }
-        }
-        return maxSurfaceY;
-    }
-
-    update() {
-        if (this.isSettling) {
-            // "Liquid" flow: evaluate surface slope by checking left and right envelope
-            const yLeft = this.getSurfaceY(this.x - 3);
-            const yRight = this.getSurfaceY(this.x + 3);
-            const yCenter = this.getSurfaceY(this.x);
-
-            // Note: Canvas Y goes down. So a larger Y means it's lower/deeper.
-            if (yLeft > yCenter + 0.5) {
-                this.vx -= 0.6; // Accelerate left towards lower gap
-            } else if (yRight > yCenter + 0.5) {
-                this.vx += 0.6; // Accelerate right towards lower gap
-            } else {
-                this.vx *= 0.6; // Apply friction at local minimum
-            }
-
-            // Cap the rolling speed
-            if (this.vx > 3) this.vx = 3;
-            if (this.vx < -3) this.vx = -3;
-
-            this.x += this.vx;
-
-            // Follow the contour of the gathered bobas
-            const newSurfaceY = this.getSurfaceY(this.x);
-
-            // If the drop is huge, it fell off a cliff, transition back to falling
-            if (this.y < newSurfaceY - 4) {
-                this.isSettling = false;
-            } else {
-                this.y = newSurfaceY;
-            }
-
-            // If we are settled horizontally, we can finalize to map
-            if (Math.abs(this.vx) < 0.1 && this.isSettling) {
-                this.finalizeSettle();
-                return false;
-            }
-            return true;
-        }
-
-        // Falling physics
-        this.y += this.vy;
-        this.x += this.vx;
-        this.vy += this.gravity;
-        this.rotation += this.rotationSpeed;
-
-        // Bounce off walls
-        if (this.x < this.size || this.x > width - this.size) {
-            this.vx = -this.vx * 0.8;
-            this.x = Math.max(this.size, Math.min(width - this.size, this.x));
-        }
-
-        const maxSurfaceY = this.getSurfaceY(this.x);
-
-        // Collision with floor or other boba
-        if (this.y >= maxSurfaceY) {
-            this.y = maxSurfaceY;
-
-            if (this.bounceCount < this.maxBounces && this.vy > 1.5) {
-                // Bounce
-                this.vy = -this.vy * 0.4;
-                // Scatter outward horizontally
-                this.vx += (Math.random() - 0.5) * 4;
-                this.bounceCount++;
-            } else {
-                // Enter liquid rolling state
-                this.isSettling = true;
-                this.vy = 0;
-            }
-        }
-
-        if (this.y > height + 20) {
-            this.finalizeSettle();
-            return false; // Escaped screen, remove
-        }
-        return true;
-    }
-
-    finalizeSettle() {
-        const radius = Math.floor(this.size * 0.8);
-        const ix = Math.floor(this.x);
-
-        if (this.y <= height) {
-            for (let i = -radius; i <= radius; i++) {
-                const checkX = ix + i;
-                if (checkX >= 0 && checkX < width) {
-                    const h = Math.sqrt(radius * radius - i * i);
-                    const surfaceY = this.y - h;
-                    if (surfaceY < accumulationMap[checkX]) {
-                        accumulationMap[checkX] = surfaceY;
-                    }
-                }
-            }
-            settledParticles.push({
-                x: this.x,
-                y: this.y,
-                size: this.size,
-                color1: this.color1,
-                color2: this.color2,
-                rotation: this.rotation
-            });
-        }
-
-        if (settledParticles.length > 3000) {
-            settledParticles.shift();
-        }
-    }
-
     draw() {
         ctx.save();
         ctx.translate(this.x, this.y);
@@ -281,7 +141,8 @@ class Boba {
         grad.addColorStop(1, this.color2);
 
         ctx.fillStyle = grad;
-        ctx.globalAlpha = 0.6;
+        // Keep alpha slightly transparent so they look like jelly
+        ctx.globalAlpha = 0.8;
         ctx.beginPath();
         ctx.arc(0, 0, this.size, 0, Math.PI * 2);
         ctx.fill();
@@ -293,60 +154,115 @@ class Boba {
 window.addEventListener('resize', resize);
 resize();
 
-// Start Wave 1 (50% all at once)
+// Start Wave 1 (50% initially)
 for (let i = 0; i < wave1Count; i++) {
     particles.push(new Boba(true));
+}
+
+function updatePhysics() {
+    const gravity = 0.15;
+    const bounceFriction = 0.3; // retain 30% speed on bounce
+    const floorFriction = 0.8; // horizontal slowdown on floor
+
+    // 1. Apply gravity, velocity, and boundary constraints
+    for (let p of particles) {
+        p.vy += gravity;
+
+        // Terminal velocity
+        if (p.vy > 12) p.vy = 12;
+
+        p.x += p.vx;
+        p.y += p.vy;
+        p.rotation += p.rotationSpeed;
+
+        // Floor constraint
+        if (p.y + p.size > height) {
+            p.y = height - p.size;
+            p.vy *= -bounceFriction;
+            p.vx *= floorFriction;
+            p.rotationSpeed *= 0.8;
+        }
+
+        // Wall constraints
+        if (p.x - p.size < 0) {
+            p.x = p.size;
+            p.vx *= -bounceFriction;
+        } else if (p.x + p.size > width) {
+            p.x = width - p.size;
+            p.vx *= -bounceFriction;
+        }
+    }
+
+    // 2. Resolve particle-to-particle collisions (Liquid Granular Effect)
+    // 2 iterations helps to settle them nicely like a fluid without spaces
+    for (let iter = 0; iter < 2; iter++) {
+        for (let i = 0; i < particles.length; i++) {
+            for (let j = i + 1; j < particles.length; j++) {
+                let p1 = particles[i];
+                let p2 = particles[j];
+
+                let dx = p2.x - p1.x;
+                let dy = p2.y - p1.y;
+                let distSq = dx * dx + dy * dy;
+                let minDist = p1.size + p2.size;
+
+                if (distSq < minDist * minDist) {
+                    let dist = Math.sqrt(distSq);
+                    if (dist === 0) dist = 0.1; // prevent divide by zero
+
+                    let overlap = minDist - dist;
+                    let nx = dx / dist;
+                    let ny = dy / dist;
+
+                    // Push apart evenly
+                    let pushX = nx * overlap * 0.5;
+                    let pushY = ny * overlap * 0.5;
+
+                    p1.x -= pushX;
+                    p1.y -= pushY;
+                    p2.x += pushX;
+                    p2.y += pushY;
+
+                    // Transfer momentum slightly / Dampen to simulate viscosity
+                    p1.vx *= 0.9;
+                    p1.vy *= 0.9;
+                    p2.vx *= 0.9;
+                    p2.vy *= 0.9;
+
+                    p1.rotationSpeed *= 0.9;
+                    p2.rotationSpeed *= 0.9;
+                }
+            }
+        }
+    }
 }
 
 function animate(timestamp) {
     ctx.clearRect(0, 0, width, height);
 
-    settledParticles.forEach(p => {
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate(p.rotation);
-        const grad = ctx.createRadialGradient(-p.size / 3, -p.size / 3, p.size / 10, 0, 0, p.size);
-        grad.addColorStop(0, p.color1);
-        grad.addColorStop(1, p.color2);
-        ctx.fillStyle = grad;
-        ctx.globalAlpha = 0.7;
-        ctx.beginPath();
-        ctx.arc(0, 0, p.size, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.restore();
-    });
-
-    // Clean trigger for Phase 2:
-    // Once Phase 1 falls and every local minimum is settled
-    if (currentState === STATES.WAVE1 && particles.length === 0) {
-        currentState = STATES.WAVE2;
+    // Wave 2 Spawning Logic (Immediate parallel start, 50% drifting over 1 minute)
+    if (wave2StartTime === 0) {
         wave2StartTime = timestamp;
     }
 
-    // Wave 2 Spawning Logic (50% drifting over 1 minute)
-    if (currentState === STATES.WAVE2) {
-        const elapsed = timestamp - wave2StartTime;
-        if (elapsed < wave2Duration) {
-            const expectedSpawn = Math.floor((elapsed / wave2Duration) * wave2Count);
-            const toSpawn = expectedSpawn - wave2Spawned;
+    const elapsed = timestamp - wave2StartTime;
+    if (elapsed < wave2Duration) {
+        const expectedSpawn = Math.floor((elapsed / wave2Duration) * wave2Count);
+        const toSpawn = expectedSpawn - wave2Spawned;
 
-            for (let i = 0; i < toSpawn; i++) {
-                particles.push(new Boba(false));
-                wave2Spawned++;
-            }
-        } else {
-            if (particles.length === 0) {
-                currentState = STATES.DONE;
-            }
+        for (let i = 0; i < toSpawn; i++) {
+            particles.push(new Boba(false));
+            wave2Spawned++;
         }
     }
 
-    // Update and filter active particles
-    particles = particles.filter(p => {
-        const active = p.update();
-        if (active) p.draw();
-        return active;
-    });
+    // Process real 2D physics
+    updatePhysics();
+
+    // Draw all
+    for (let p of particles) {
+        p.draw();
+    }
 
     requestAnimationFrame(animate);
 }
