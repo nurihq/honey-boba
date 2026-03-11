@@ -116,6 +116,14 @@ h3,
     animation: float-down linear forwards;
 }
 
+.boba-pink {
+    background: radial-gradient(circle at 30% 30%, #ffc0cb, #ff758f) !important;
+}
+
+.boba-blue {
+    background: radial-gradient(circle at 30% 30%, #add8e6, #00c2e8) !important;
+}
+
 @keyframes float-down {
     to {
         transform: translateY(110vh) rotate(360deg);
@@ -191,7 +199,8 @@ main {
 
 .hero-image {
     width: 100%;
-    max-width: 300px;
+    max-width: 280px;
+    /* Reduced from 300px to ensure vertical fit */
     filter: drop-shadow(0 15px 25px rgba(0, 0, 0, 0.1));
 }
 
@@ -216,10 +225,10 @@ main {
 }
 
 .hero-title {
-    font-size: 5rem;
-    /* Slightly larger */
+    font-size: 3.8rem;
+    /* Reduced to fit better */
     line-height: 1.1;
-    margin-bottom: 2rem;
+    margin-bottom: 1.2rem;
     color: var(--text-primary);
     background: linear-gradient(135deg, var(--accent-pink) 0%, var(--accent-yellow) 100%);
     -webkit-background-clip: text;

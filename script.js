@@ -4,12 +4,12 @@ const translations = {
         "t-hero-subtitle": "Premium Bubble Tea lovingly crafted in Tbilisi.",
         "t-hero-cta": "View Menu",
         "t-menu-title": "Our Top Picks",
-        "t-dish1-name": "Brown Sugar Boba",
-        "t-dish1-desc": "Rich caramel notes with our signature chewy tapioca.",
-        "t-dish2-name": "Taro Milk Tea",
-        "t-dish2-desc": "Creamy, nutty, and vibrant purple perfection.",
-        "t-dish3-name": "Matcha Latte",
-        "t-dish3-desc": "Earthy premium matcha layered with fresh milk.",
+        "t-dish1-name": "Taro Lava",
+        "t-dish1-desc": "Creamy taro with purple lava swirls and chewy boba.",
+        "t-dish2-name": "Tiger Boba",
+        "t-dish2-desc": "Signature brown sugar stripes with fresh milk and pearls.",
+        "t-dish3-name": "Oreo Cheesecake",
+        "t-dish3-desc": "Indulgent cheesecake flavor with crunchy Oreo bits.",
         "t-order-wolt-1": "Order on Wolt",
         "t-order-wolt-2": "Order on Wolt",
         "t-order-wolt-3": "Order on Wolt",
@@ -22,12 +22,12 @@ const translations = {
         "t-hero-subtitle": "პრემიუმ ბაბლ თი, სიყვარულით დამზადებული თბილისში.",
         "t-hero-cta": "ნახეთ მენიუ",
         "t-menu-title": "ჩვენი რჩეულები",
-        "t-dish1-name": "ბრაუნ შუგარ ბობა",
-        "t-dish1-desc": "მდიდარი კარამელის ნოტები ჩვენს საფირმო ტაპიოკასთან ერთად.",
-        "t-dish2-name": "ტაროს რძიანი ჩაი",
-        "t-dish2-desc": "კრემოვანი, თხილამური და იდეალური იასამნისფერი.",
-        "t-dish3-name": "მატჩა ლატე",
-        "t-dish3-desc": "პრემიუმ მატჩა ახალი რძის ფენით.",
+        "t-dish1-name": "ტარო ლავა",
+        "t-dish1-desc": "კრემოვანი ტარო იასამნისფერი ლავის ეფექტით და ბობით.",
+        "t-dish2-name": "ტაიგერ ბობა",
+        "t-dish2-desc": "საფირმო ყავისფერი შაქრის ზოლები ახალი რძით და მარგალიტებით.",
+        "t-dish3-name": "ორეო ჩიზქეიქი",
+        "t-dish3-desc": "მდიდარი ჩიზქეიქის გემო ხრაშუნა ორეოს ნამცხვრებით.",
         "t-order-wolt-1": "შეუკვეთეთ Wolt-ზე",
         "t-order-wolt-2": "შეუკვეთეთ Wolt-ზე",
         "t-order-wolt-3": "შეუკვეთეთ Wolt-ზე",
@@ -72,6 +72,14 @@ const container = document.getElementById('boba-particles');
 function createBoba() {
     const boba = document.createElement('div');
     boba.classList.add('boba');
+
+    // 10% chance to be a coloured boba
+    const rand = Math.random();
+    if (rand < 0.05) {
+        boba.classList.add('boba-pink');
+    } else if (rand < 0.10) {
+        boba.classList.add('boba-blue');
+    }
 
     // Randomize properties
     const size = Math.random() * 15 + 10; // 10px to 25px
