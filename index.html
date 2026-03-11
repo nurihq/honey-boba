@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Honey Boba | Tbilisi's Best Bubble Tea</title>
+    <meta name="description"
+        content="Experience the best bubble tea in Tbilisi at Honey Boba. Delicious flavors, fresh ingredients, and a touch of magic in every cup.">
+    <link rel="stylesheet" href="styles.css">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Quicksand:wght@400;600;700&display=swap"
+        rel="stylesheet">
+    <link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+
+<body class="dark-theme">
+    <div class="background-orbs">
+        <div class="orb orb-1"></div>
+        <div class="orb orb-2"></div>
+        <div class="orb orb-3"></div>
+    </div>
+
+    <!-- Floating Boba Particles -->
+    <div class="boba-particles" id="boba-particles"></div>
+
+    <nav class="navbar">
+        <div class="logo">Honey Boba</div>
+        <div class="lang-toggle-container">
+            <span class="lang-label" id="lang-en">EN</span>
+            <label class="switch">
+                <input type="checkbox" id="langToggle">
+                <span class="slider round"></span>
+            </label>
+            <span class="lang-label" id="lang-ge">GE</span>
+        </div>
+    </nav>
+
+    <main>
+        <!-- Hero Section -->
+        <section class="hero">
+            <div class="hero-content">
+                <h1 class="hero-title" id="t-hero-title">Sip the Sweetness</h1>
+                <p class="hero-subtitle" id="t-hero-subtitle">Premium Bubble Tea lovingly crafted in Tbilisi.</p>
+                <a href="#menu" class="cta-button" id="t-hero-cta">View Menu</a>
+            </div>
+            <div class="hero-image-container">
+                <img src="assets/rabbit-hero.png" alt="Honey Boba Rabbit Character"
+                    class="hero-image floating-animation" id="heroImage">
+            </div>
+        </section>
+
+        <!-- Menu Section -->
+        <section class="menu" id="menu">
+            <h2 class="section-title" id="t-menu-title">Our Top Picks</h2>
+            <div class="menu-grid">
+                <!-- Card 1 -->
+                <a href="#" class="menu-card" id="dish1-link" target="_blank" rel="noopener">
+                    <div class="card-image-wrapper">
+                        <img src="assets/dish1.png" alt="Signature Drink 1" id="dish1-img">
+                        <div class="overlay"><span id="t-order-wolt-1">Order on Wolt</span></div>
+                    </div>
+                    <div class="card-content">
+                        <h3 id="t-dish1-name">Brown Sugar Boba</h3>
+                        <p id="t-dish1-desc">Rich caramel notes with our signature chewy tapioca.</p>
+                    </div>
+                </a>
+                <!-- Card 2 -->
+                <a href="#" class="menu-card" id="dish2-link" target="_blank" rel="noopener">
+                    <div class="card-image-wrapper">
+                        <img src="assets/dish2.png" alt="Signature Drink 2" id="dish2-img">
+                        <div class="overlay"><span id="t-order-wolt-2">Order on Wolt</span></div>
+                    </div>
+                    <div class="card-content">
+                        <h3 id="t-dish2-name">Taro Milk Tea</h3>
+                        <p id="t-dish2-desc">Creamy, nutty, and vibrant purple perfection.</p>
+                    </div>
+                </a>
+                <!-- Card 3 -->
+                <a href="#" class="menu-card" id="dish3-link" target="_blank" rel="noopener">
+                    <div class="card-image-wrapper">
+                        <img src="assets/dish3.png" alt="Signature Drink 3" id="dish3-img">
+                        <div class="overlay"><span id="t-order-wolt-3">Order on Wolt</span></div>
+                    </div>
+                    <div class="card-content">
+                        <h3 id="t-dish3-name">Matcha Latte</h3>
+                        <p id="t-dish3-desc">Earthy premium matcha layered with fresh milk.</p>
+                    </div>
+                </a>
+            </div>
+        </section>
+
+        <!-- Links Section -->
+        <section class="links-section" id="links">
+            <h2 class="section-title" id="t-links-title">Find Us Here</h2>
+            <div class="links-grid">
+                <a href="https://wolt.com/en/geo/tbilisi/venue/honey-boba-bubble-tea" class="glass-link wolt"
+                    target="_blank" rel="noopener">
+                    <span class="icon">🚲</span>
+                    <span class="link-text">Wolt</span>
+                </a>
+                <a href="https://food.bolt.eu/en-US/15/p/83916-honey-boba-bubble-tea" class="glass-link bolt"
+                    target="_blank" rel="noopener">
+                    <span class="icon">⚡</span>
+                    <span class="link-text">Bolt</span>
+                </a>
+                <a href="https://glovoapp.com/ge/en/tbilisi/honey-boba-bubble-tea-tb" class="glass-link glovo"
+                    target="_blank" rel="noopener">
+                    <span class="icon">🛵</span>
+                    <span class="link-text">Glovo</span>
+                </a>
+                <a href="https://www.instagram.com/honeyboba_tbilisi" class="glass-link instagram" target="_blank"
+                    rel="noopener">
+                    <span class="icon">📸</span>
+                    <span class="link-text">Instagram</span>
+                </a>
+                <a href="https://www.facebook.com/p/honeyboba_tbilisi-100090943046845/" class="glass-link facebook"
+                    target="_blank" rel="noopener">
+                    <span class="icon">👥</span>
+                    <span class="link-text">Facebook</span>
+                </a>
+            </div>
+        </section>
+
+        <!-- Google Maps Embed -->
+        <section class="map-section">
+            <h2 class="section-title" id="t-map-title">Visit Us</h2>
+            <div class="map-container glass">
+                <iframe
+                    src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2978.8913988629633!2d44.780182676088894!3d41.7013589712613!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x40440d0061e3d093%3A0x8bb8c946be48ac12!2sHoney%20Boba!5e0!3m2!1sen!2sge!4v1710156789012!5m2!1sen!2sge"
+                    width="100%" height="100%" style="border:0;" allowfullscreen="" loading="lazy"
+                    referrerpolicy="no-referrer-when-downgrade">
+                </iframe>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="nuri-badge">
+            <span id="t-built-by">Built with</span>
+            <!-- Nuri Icon to be added by user/script but we'll use a placeholder icon -->
+            <a href="https://nuri.ge" target="_blank" rel="noopener" class="nuri-link">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"
+                    class="nuri-icon">
+                    <path d="M12 2L2 7L12 12L22 7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                    <path d="M2 17L12 22L22 17" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                    <path d="M2 12L12 17L22 12" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                        stroke-linejoin="round" />
+                </svg>
+                <span class="nuri-text">Nuri</span>
+            </a>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+
+</html>
