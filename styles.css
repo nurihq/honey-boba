@@ -92,35 +92,13 @@ h3,
     position: fixed;
     top: 0;
     left: 0;
-    width: 100vw;
-    height: 100vh;
+    width: 100%;
+    height: 100%;
     pointer-events: none;
     z-index: -1;
 }
 
-.boba {
-    position: absolute;
-    top: -50px;
-    background: radial-gradient(circle at 30% 30%, #4a2e1b, #21130b);
-    border-radius: 50%;
-    opacity: 0.5;
-    animation: float-down linear forwards;
-}
-
-.boba-pink {
-    background: radial-gradient(circle at 30% 30%, #ffc0cb, #ff758f) !important;
-}
-
-.boba-blue {
-    background: radial-gradient(circle at 30% 30%, #add8e6, #00c2e8) !important;
-}
-
-@keyframes float-down {
-    to {
-        transform: translateY(110vh) rotate(360deg);
-        opacity: 0.2;
-    }
-}
+/* Boba animation styles removed - handled by Canvas in script.js */
 
 /* Navbar */
 .navbar {
