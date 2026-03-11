@@ -68,7 +68,7 @@ const ctx = canvas.getContext('2d');
 let width, height;
 let particles = [];
 let settledParticles = [];
-const accumulationMap = []; 
+const accumulationMap = [];
 
 // Wave States
 const STATES = {
@@ -93,21 +93,21 @@ function resize() {
     for (let i = 0; i < width; i++) {
         accumulationMap[i] = height;
     }
-    
+
     // Estimate counts based on screen area to hit 15% and 10%
     const bobaArea = 300; // rough area taken by one boba in the pile including gaps
     wave1Count = Math.floor((width * height * 0.15) / bobaArea);
     wave1Count = Math.min(600, wave1Count); // Cap it to ensure performance
-    
+
     wave2Count = Math.floor((width * height * 0.10) / bobaArea);
     wave2Count = Math.min(400, wave2Count);
 }
 
 class Boba {
     constructor(isWave1 = false) {
-        this.size = Math.random() * 8 + 6; 
+        this.size = Math.random() * 8 + 6;
         this.isWave1 = isWave1;
-        
+
         if (this.isWave1) {
             // Sitting together at the top, drop together
             this.x = Math.random() * (width - 40) + 20;
@@ -122,10 +122,14 @@ class Boba {
             this.vy = Math.random() * 1.5 + 1.5; // Slower fall
             this.vx = (Math.random() - 0.5) * 1.5;
         }
-        
+
         this.rotation = Math.random() * Math.PI * 2;
         this.rotationSpeed = (Math.random() - 0.5) * 0.02;
-        
+
+        this.bounceCount = 0;
+        this.maxBounces = 2; // Allow small bounces
+        this.isSettling = false; // Transition state
+
         const rand = Math.random();
         if (rand < 0.05) {
             this.color1 = '#ffc0cb';
@@ -140,13 +144,49 @@ class Boba {
     }
 
     update() {
+        if (this.isSettling) {
+            // Apply friction and slight sliding while settling
+            this.x += this.vx;
+            this.vx *= 0.8;
+
+            // Re-check surface height in case it slid to a lower spot
+            const radius = Math.floor(this.size * 0.8);
+            const ix = Math.floor(this.x);
+            let maxSurfaceY = height;
+            if (ix >= radius && ix < width - radius) {
+                for (let i = -radius; i <= radius; i++) {
+                    const checkX = ix + i;
+                    const h = Math.sqrt(radius * radius - i * i);
+                    const surfaceY = accumulationMap[checkX] - h;
+                    if (surfaceY < maxSurfaceY) {
+                        maxSurfaceY = surfaceY;
+                    }
+                }
+            }
+
+            // If it found a new drop off, resume falling
+            if (this.y < maxSurfaceY - 2) {
+                this.isSettling = false;
+            } else {
+                this.y = maxSurfaceY;
+            }
+
+            // Check if settled enough horizontally
+            if (Math.abs(this.vx) < 0.1 || !this.isSettling) {
+                if (this.isSettling) this.finalizeSettle();
+                return this.isSettling ? false : true;
+            }
+            return true;
+        }
+
         this.y += this.vy;
         this.x += this.vx;
+        this.vy += 0.2; // Add gravity
         this.rotation += this.rotationSpeed;
 
         const radius = Math.floor(this.size * 0.8);
         const ix = Math.floor(this.x);
-        
+
         if (ix >= radius && ix < width - radius) {
             let maxSurfaceY = height;
             for (let i = -radius; i <= radius; i++) {
@@ -160,22 +200,33 @@ class Boba {
 
             if (this.y >= maxSurfaceY) {
                 this.y = maxSurfaceY;
-                this.settle();
-                return false;
+
+                if (this.bounceCount < this.maxBounces && this.vy > 2) {
+                    // Bounce
+                    this.vy = -this.vy * 0.4;
+                    // Spread outward a bit on impact
+                    this.vx = (Math.random() - 0.5) * 4;
+                    this.bounceCount++;
+                } else {
+                    // Start sliding/settling
+                    this.isSettling = true;
+                    this.vy = 0;
+                    this.vx = (Math.random() - 0.5) * 2; // Final small slide
+                }
             }
         }
 
         if (this.y > height + 20) {
-            this.settle(); // Count as settled if it completely falls off bounds to prevent infinite active particles
-            return false;
+            this.finalizeSettle();
+            return false; // Done
         }
         return true;
     }
 
-    settle() {
+    finalizeSettle() {
         const radius = Math.floor(this.size * 0.8);
         const ix = Math.floor(this.x);
-        
+
         // Only add to map if it's within bounds
         if (this.y <= height) {
             for (let i = -radius; i <= radius; i++) {
@@ -197,7 +248,7 @@ class Boba {
                 rotation: this.rotation
             });
         }
-        
+
         if (this.isWave1) {
             wave1Settled++;
             if (wave1Settled >= wave1Count && currentState === STATES.WAVE1) {
@@ -205,23 +256,21 @@ class Boba {
                 wave2StartTime = performance.now();
             }
         }
-        
+
         if (settledParticles.length > 3000) { // Safety cap
             settledParticles.shift();
         }
-        
-        return false; // Particle is done
     }
 
     draw() {
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.rotate(this.rotation);
-        
+
         const grad = ctx.createRadialGradient(-this.size / 3, -this.size / 3, this.size / 10, 0, 0, this.size);
         grad.addColorStop(0, this.color1);
         grad.addColorStop(1, this.color2);
-        
+
         ctx.fillStyle = grad;
         ctx.globalAlpha = 0.6;
         ctx.beginPath();
@@ -242,7 +291,7 @@ for (let i = 0; i < wave1Count; i++) {
 
 function animate(timestamp) {
     ctx.clearRect(0, 0, width, height);
-    
+
     // Draw all settled boba
     settledParticles.forEach(p => {
         ctx.save();
@@ -265,8 +314,8 @@ function animate(timestamp) {
         if (elapsed < wave2Duration) {
             const expectedSpawn = Math.floor((elapsed / wave2Duration) * wave2Count);
             const toSpawn = expectedSpawn - wave2Spawned;
-            
-            for(let i=0; i < toSpawn; i++) {
+
+            for (let i = 0; i < toSpawn; i++) {
                 particles.push(new Boba(false));
                 wave2Spawned++;
             }
