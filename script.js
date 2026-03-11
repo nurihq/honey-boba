@@ -89,7 +89,7 @@ class Boba {
 
     reset() {
         this.size = Math.random() * 8 + 6;
-        this.x = Math.random() * width;
+        this.x = Math.random() * (width - 40) + 20;
         this.y = -50;
         this.vy = Math.random() * 1.5 + 1;
         this.vx = (Math.random() - 0.5) * 0.5;
@@ -114,11 +114,24 @@ class Boba {
         this.x += this.vx;
         this.rotation += this.rotationSpeed;
 
+        // Check for landing across the entire width of the boba
+        const radius = Math.floor(this.size * 0.8);
         const ix = Math.floor(this.x);
-        if (ix >= 0 && ix < width) {
-            const targetY = accumulationMap[ix] - this.size;
-            if (this.y >= targetY) {
-                this.y = targetY;
+
+        if (ix >= radius && ix < width - radius) {
+            let maxSurfaceY = height;
+            // Find the highest point in the heightmap within our radius to land on
+            for (let i = -radius; i <= radius; i++) {
+                const checkX = ix + i;
+                const h = Math.sqrt(radius * radius - i * i);
+                const surfaceY = accumulationMap[checkX] - h;
+                if (surfaceY < maxSurfaceY) {
+                    maxSurfaceY = surfaceY;
+                }
+            }
+
+            if (this.y >= maxSurfaceY) {
+                this.y = maxSurfaceY;
                 this.settle();
                 return false;
             }
@@ -132,11 +145,17 @@ class Boba {
 
     settle() {
         const radius = Math.floor(this.size * 0.8);
+        const ix = Math.floor(this.x);
+
+        // Update heightmap - ensure it doesn't overlap existing surface
         for (let i = -radius; i <= radius; i++) {
-            const ix = Math.floor(this.x + i);
-            if (ix >= 0 && ix < width) {
+            const checkX = ix + i;
+            if (checkX >= 0 && checkX < width) {
                 const h = Math.sqrt(radius * radius - i * i);
-                accumulationMap[ix] = Math.min(accumulationMap[ix], this.y - h + this.size);
+                const surfaceY = this.y - h;
+                if (surfaceY < accumulationMap[checkX]) {
+                    accumulationMap[checkX] = surfaceY;
+                }
             }
         }
         settledParticles.push({
