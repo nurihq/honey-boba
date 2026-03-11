@@ -411,13 +411,14 @@ main {
 /* Response for small screens */
 @media (max-width: 900px) {
     .menu-grid {
-        flex-wrap: wrap;
-        /* Stack on mobile */
+        flex-direction: column;
+        align-items: center;
     }
 
     .menu-card {
-        max-width: 100%;
-        margin-bottom: 1.5rem;
+        width: 100%;
+        max-width: 400px;
+        margin-bottom: 2rem;
     }
 }
 

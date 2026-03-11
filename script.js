@@ -68,18 +68,23 @@ const ctx = canvas.getContext('2d');
 let width, height;
 let particles = [];
 let settledParticles = [];
-const accumulationMap = [];
+const accumulationMap = []; 
 
 // Wave States
 const STATES = {
-    POUR: 'POUR', // Clumped initial pour
-    TRICKLE: 'TRICKLE', // Slower, decaying flow
-    DONE: 'DONE' // 20% full, stop falling
+    WAVE1: 'WAVE1', // Dense initial drop sitting at top
+    WAVE2: 'WAVE2', // Slow filling over 1 minute
+    DONE: 'DONE'    // 25% full
 };
-let currentState = STATES.POUR;
-let wave1Count = 120; // Denser pour
+let currentState = STATES.WAVE1;
+
+let wave1Count = 0;
 let wave1Settled = 0;
-const HEIGHT_LIMIT_PERCENT = 0.22; // Slightly more than 20% for safety cushion
+
+let wave2Count = 0;
+let wave2Spawned = 0;
+let wave2StartTime = 0;
+let wave2Duration = 60000; // 1 minute in ms
 
 function resize() {
     width = canvas.width = window.innerWidth;
@@ -88,46 +93,39 @@ function resize() {
     for (let i = 0; i < width; i++) {
         accumulationMap[i] = height;
     }
+    
+    // Estimate counts based on screen area to hit 15% and 10%
+    const bobaArea = 300; // rough area taken by one boba in the pile including gaps
+    wave1Count = Math.floor((width * height * 0.15) / bobaArea);
+    wave1Count = Math.min(600, wave1Count); // Cap it to ensure performance
+    
+    wave2Count = Math.floor((width * height * 0.10) / bobaArea);
+    wave2Count = Math.min(400, wave2Count);
 }
 
-window.addEventListener('resize', resize);
-resize();
-
 class Boba {
-    constructor(index = 0) {
-        this.reset(true, index);
-    }
-
-    reset(isInitial = false, index = 0) {
-        // Height check - stop spawning if full
-        const minHeight = Math.min(...accumulationMap);
-        if (height - minHeight > height * HEIGHT_LIMIT_PERCENT) {
-            currentState = STATES.DONE;
-            return false;
-        }
-
-        this.size = Math.random() * 8 + 6;
-
-        if (currentState === STATES.POUR) {
-            // "Pouring" physics: centralized clumps, fast fall
-            // Use index to stagger start positions for the "pour" effect
-            const clumpX = width / 2 + (Math.random() - 0.5) * (width * 0.6);
-            this.x = clumpX;
-            this.y = -50 - (index * 15) - (Math.random() * 200);
-            this.vy = (Math.random() * 2.5 + 4); // Fast "pour" speed
-        } else if (currentState === STATES.TRICKLE) {
-            // "Trickle" physics: wide spread, slow fall
+    constructor(isWave1 = false) {
+        this.size = Math.random() * 8 + 6; 
+        this.isWave1 = isWave1;
+        
+        if (this.isWave1) {
+            // Sitting together at the top, drop together
             this.x = Math.random() * (width - 40) + 20;
-            this.y = -50 - Math.random() * 500;
-            this.vy = (Math.random() * 1.5 + 0.5) * 0.5; // Very slow
+            // Clumped vertically right above the screen bounds
+            this.y = -50 - Math.random() * 150;
+            this.vy = Math.random() * 2 + 5; // Fall fast together
+            this.vx = (Math.random() - 0.5) * 0.5;
         } else {
-            return false;
+            // Wave 2: spawn at top, fall slowly
+            this.x = Math.random() * (width - 40) + 20;
+            this.y = -50;
+            this.vy = Math.random() * 1.5 + 1.5; // Slower fall
+            this.vx = (Math.random() - 0.5) * 1.5;
         }
-
-        this.vx = (Math.random() - 0.5) * 1.5;
+        
         this.rotation = Math.random() * Math.PI * 2;
         this.rotationSpeed = (Math.random() - 0.5) * 0.02;
-
+        
         const rand = Math.random();
         if (rand < 0.05) {
             this.color1 = '#ffc0cb';
@@ -139,19 +137,16 @@ class Boba {
             this.color1 = '#4a2e1b';
             this.color2 = '#21130b';
         }
-        return true;
     }
 
     update() {
-        if (currentState === STATES.DONE) return false;
-
         this.y += this.vy;
         this.x += this.vx;
         this.rotation += this.rotationSpeed;
 
         const radius = Math.floor(this.size * 0.8);
         const ix = Math.floor(this.x);
-
+        
         if (ix >= radius && ix < width - radius) {
             let maxSurfaceY = height;
             for (let i = -radius; i <= radius; i++) {
@@ -171,10 +166,8 @@ class Boba {
         }
 
         if (this.y > height + 20) {
-            if (currentState === STATES.POUR) {
-                wave1Settled++;
-            }
-            return this.reset();
+            this.settle(); // Count as settled if it completely falls off bounds to prevent infinite active particles
+            return false;
         }
         return true;
     }
@@ -182,58 +175,53 @@ class Boba {
     settle() {
         const radius = Math.floor(this.size * 0.8);
         const ix = Math.floor(this.x);
-
-        for (let i = -radius; i <= radius; i++) {
-            const checkX = ix + i;
-            if (checkX >= 0 && checkX < width) {
-                const h = Math.sqrt(radius * radius - i * i);
-                const surfaceY = this.y - h;
-                if (surfaceY < accumulationMap[checkX]) {
-                    accumulationMap[checkX] = surfaceY;
+        
+        // Only add to map if it's within bounds
+        if (this.y <= height) {
+            for (let i = -radius; i <= radius; i++) {
+                const checkX = ix + i;
+                if (checkX >= 0 && checkX < width) {
+                    const h = Math.sqrt(radius * radius - i * i);
+                    const surfaceY = this.y - h;
+                    if (surfaceY < accumulationMap[checkX]) {
+                        accumulationMap[checkX] = surfaceY;
+                    }
                 }
             }
+            settledParticles.push({
+                x: this.x,
+                y: this.y,
+                size: this.size,
+                color1: this.color1,
+                color2: this.color2,
+                rotation: this.rotation
+            });
         }
-        settledParticles.push({
-            x: this.x,
-            y: this.y,
-            size: this.size,
-            color1: this.color1,
-            color2: this.color2,
-            rotation: this.rotation
-        });
-
-        if (currentState === STATES.POUR) {
+        
+        if (this.isWave1) {
             wave1Settled++;
-            if (wave1Settled >= wave1Count) {
-                currentState = STATES.TRICKLE;
-                // Transition Wave 1 to Wave 2: Slice down to keep it sparse
-                particles = particles.slice(0, 15);
+            if (wave1Settled >= wave1Count && currentState === STATES.WAVE1) {
+                currentState = STATES.WAVE2;
+                wave2StartTime = performance.now();
             }
-            return false; // Wave 1 particles are consumed after settling
         }
-
-        if (settledParticles.length > 2500) {
+        
+        if (settledParticles.length > 3000) { // Safety cap
             settledParticles.shift();
         }
-
-        // Trickle wave density decay
-        if (currentState === STATES.TRICKLE && Math.random() < 0.1) {
-            // Gradually cull particles to make it less dense
-            return false;
-        }
-
-        return this.reset();
+        
+        return false; // Particle is done
     }
 
     draw() {
         ctx.save();
         ctx.translate(this.x, this.y);
         ctx.rotate(this.rotation);
-
+        
         const grad = ctx.createRadialGradient(-this.size / 3, -this.size / 3, this.size / 10, 0, 0, this.size);
         grad.addColorStop(0, this.color1);
         grad.addColorStop(1, this.color2);
-
+        
         ctx.fillStyle = grad;
         ctx.globalAlpha = 0.6;
         ctx.beginPath();
@@ -243,14 +231,18 @@ class Boba {
     }
 }
 
-// Start Wave 1 (The Pour)
+// Initialization and start
+window.addEventListener('resize', resize);
+resize();
+
+// Start Wave 1 (All at once)
 for (let i = 0; i < wave1Count; i++) {
-    particles.push(new Boba(i));
+    particles.push(new Boba(true));
 }
 
-function animate() {
+function animate(timestamp) {
     ctx.clearRect(0, 0, width, height);
-
+    
     // Draw all settled boba
     settledParticles.forEach(p => {
         ctx.save();
@@ -267,6 +259,30 @@ function animate() {
         ctx.restore();
     });
 
+    // Wave 2 Spawning Logic
+    if (currentState === STATES.WAVE2) {
+        const elapsed = timestamp - wave2StartTime;
+        if (elapsed < wave2Duration) {
+            const expectedSpawn = Math.floor((elapsed / wave2Duration) * wave2Count);
+            const toSpawn = expectedSpawn - wave2Spawned;
+            
+            for(let i=0; i < toSpawn; i++) {
+                particles.push(new Boba(false));
+                wave2Spawned++;
+            }
+        } else {
+            currentState = STATES.DONE;
+        }
+    }
+
+    // Check strict 25% height limit globally just in case
+    if (currentState !== STATES.DONE) {
+        const minHeight = Math.min(...accumulationMap);
+        if (height - minHeight > height * 0.25) {
+            currentState = STATES.DONE;
+        }
+    }
+
     // Update and filter active particles
     particles = particles.filter(p => {
         const active = p.update();
@@ -277,7 +293,7 @@ function animate() {
     requestAnimationFrame(animate);
 }
 
-animate();
+requestAnimationFrame(animate);
 
 // Smooth scrolling
 document.querySelectorAll('a[href^="#"]').forEach(anchor => {
