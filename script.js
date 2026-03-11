@@ -69,6 +69,7 @@ let width, height;
 let particles = [];
 let settledParticles = [];
 const accumulationMap = [];
+let speedMultiplier = 1.3; // Initial rush multiplier
 
 function resize() {
     width = canvas.width = window.innerWidth;
@@ -84,17 +85,22 @@ resize();
 
 class Boba {
     constructor() {
-        this.reset();
+        this.reset(true); // Initial creation
     }
 
-    reset() {
+    reset(isInitial = false) {
         this.size = Math.random() * 8 + 6;
         this.x = Math.random() * (width - 40) + 20;
-        this.y = -50;
-        this.vy = (Math.random() * 1.5 + 1) * 0.7; // Reduced by 30%
+        this.y = isInitial ? Math.random() * height : -50;
+        this.vy = (Math.random() * 1.5 + 1) * 0.7 * speedMultiplier;
         this.vx = (Math.random() - 0.5) * 0.5;
         this.rotation = Math.random() * Math.PI * 2;
         this.rotationSpeed = (Math.random() - 0.5) * 0.02;
+
+        // Decay speed multiplier after initial rush
+        if (!isInitial && speedMultiplier > 1.0) {
+            speedMultiplier -= 0.01;
+        }
 
         const rand = Math.random();
         if (rand < 0.05) {
