@@ -69,7 +69,7 @@ let width, height;
 let particles = [];
 let settledParticles = [];
 const accumulationMap = [];
-let speedMultiplier = 1.3; // Initial rush multiplier
+let speedMultiplier = 3.0; // Initial rush multiplier (Energetic)
 
 function resize() {
     width = canvas.width = window.innerWidth;
@@ -91,15 +91,18 @@ class Boba {
     reset(isInitial = false) {
         this.size = Math.random() * 8 + 6;
         this.x = Math.random() * (width - 40) + 20;
-        this.y = isInitial ? Math.random() * height : -50;
+
+        // Start from top in a staggered wave
+        this.y = isInitial ? -50 - Math.random() * 800 : -50;
+
         this.vy = (Math.random() * 1.5 + 1) * 0.7 * speedMultiplier;
         this.vx = (Math.random() - 0.5) * 0.5;
         this.rotation = Math.random() * Math.PI * 2;
         this.rotationSpeed = (Math.random() - 0.5) * 0.02;
 
-        // Decay speed multiplier after initial rush
+        // Decay speed multiplier after initial rush (energetic to gradual)
         if (!isInitial && speedMultiplier > 1.0) {
-            speedMultiplier -= 0.01;
+            speedMultiplier -= 0.02;
         }
 
         const rand = Math.random();
@@ -198,7 +201,7 @@ class Boba {
     }
 }
 
-for (let i = 0; i < 30; i++) {
+for (let i = 0; i < 40; i++) {
     particles.push(new Boba());
 }
 
